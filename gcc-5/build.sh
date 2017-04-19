@@ -29,6 +29,7 @@ if [ "$(uname)" == "Darwin" ]; then
         --with-stage1-ldflags="${LDFLAGS}" \
         --enable-checking=release \
         --with-tune=generic \
+        --enable-version-specific-runtime-libs \
         --disable-multilib \
         ${extra_config[@]}
 else
@@ -48,7 +49,7 @@ else
       else
         echo "Fatal: Cannot find crt*.o"
         exit 1
-      fi 
+      fi
     fi
 
     ./configure \
@@ -64,6 +65,7 @@ else
         --with-cloog="${PREFIX}" \
         --enable-checking=release \
         --with-tune=generic \
+        --enable-version-specific-runtime-libs \
         --disable-multilib \
         ${extra_config[@]}
 fi
@@ -98,17 +100,60 @@ find "${PREFIX}" -name '*la' -print0 | xargs -0  rm -f
 # Link cc to gcc
 (cd "${PREFIX}"/bin && ln -s gcc cc)
 
-arch_dir="x86_64-unknown-linux-gnu"
+# Fix the libgcc location. I don't know why it is put here
 GCC_VERSION=$($PREFIX/bin/gcc -dumpversion)
+mv "${PREFIX}"/lib/gcc/*/lib/libgcc_s.so* "${PREFIX}"/lib/gcc/*/$GCC_VERSION/
+rmdir "${PREFIX}"/lib/gcc/*/lib
 
+SPECS_DIR=$(echo "${PREFIX}"/lib/gcc/*/*)
+SPECS_FILE="${SPECS_DIR}/specs"
 # Add the the preprocessor definition _GLIBCXX_USE_CXX11_ABI=0 to all compilations so that we use the old ABI by default
-specs_filename=$PREFIX/lib/gcc/$arch_dir/$GCC_VERSION/specs
-$PREFIX/bin/gcc -dumpspecs > $specs_filename
-cpp_lineno=$(grep -nr '\*cpp:' $specs_filename | cut -d ':' -f 1)
-if [[ "$cpp_lineno" == "" ]]; then
-    echo "- Couldn't find the string \"*cpp:\" in the specs file: $specs_filename"
-    cat $specs_filename
-    exit -1
+${PREFIX}/bin/gcc -dumpspecs > $SPECS_FILE
+# The following sed command will replace these two lines:
+# *cpp:
+# ... yada yada ...
+#
+# With these two lines:
+# *cpp:
+# ... yada yada ... -D_GLIBCXX_USE_CXX11_ABI=0
+sed -i ':a;N;$!ba;s|\(*cpp:\n[^\n]*\)|\1 -D_GLIBCXX_USE_CXX11_ABI=0|g' "${SPECS_FILE}"
+
+if [ "$(uname)" == "Linux" ]; then
+    #
+    # Linux Portability Issue #1: "fixed includes"
+    #
+
+    # Remove the headers that gcc "fixed" as part of the gcc build process.
+    # They kill the gcc binary's portability to other systems,
+    #   and shouldn't be necessary on ANSI-compliant systems anyway.
+    # See this informative writeup of the problem:
+    # http://ewontfix.com/12/
+    #
+    # More discussion can be found here:
+    # https://groups.google.com/a/continuum.io/d/msg/conda/HwUazgD-hJ0/aofO0vD-MhcJ
+    while read -r x ; do
+      grep -q 'It has been auto-edited by fixincludes from' "${x}" \
+               && rm -f "${x}"
+    done < <(find "${PREFIX}"/lib/gcc/*/*/include*/ -name '*.h')
+
+    #
+    # Linux Portability Issue #3: Compiler needs to locate system headers
+    #
+
+    # Some distros use different system include paths than the ones this gcc binary was built for.
+    # We'll add these to the standard include path by providing a custom "specs file"
+    # Now add extra include paths to the specs file, one at a time.
+    # (So far we only know of one: from Ubuntu.)
+    EXTRA_SYSTEM_INCLUDE_DIRS="/usr/include/x86_64-linux-gnu /usr/include/i686-linux-gnu /usr/include/i386-linux-gnu"
+
+    for INCDIR in ${EXTRA_SYSTEM_INCLUDE_DIRS}; do
+        # The following sed command will replace these two lines:
+        # *cpp:
+        # ... yada yada ...
+        #
+        # With these two lines:
+        # *cpp:
+        # ... yada yada ... -isystem ${INCDIR}
+        sed -i ':a;N;$!ba;s|\(*cpp:\n[^\n]*\)|\1 -isystem '${INCDIR}'|g' "${SPECS_FILE}"
+    done
 fi
-cpp_lineno=$(($cpp_lineno + 1))
-sed -i "$cpp_lineno s/$/ -D_GLIBCXX_USE_CXX11_ABI=0/g" $specs_filename

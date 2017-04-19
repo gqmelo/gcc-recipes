@@ -20,19 +20,7 @@ else
     #
     # Linux Portability Issue #1: "fixed includes"
     #
-
-    # Remove the headers that gcc "fixed" as part of the gcc build process.
-    # They kill the gcc binary's portability to other systems,
-    #   and shouldn't be necessary on ANSI-compliant systems anyway.
-    # See this informative writeup of the problem:
-    # http://ewontfix.com/12/
-    #
-    # More discussion can be found here:
-    # https://groups.google.com/a/continuum.io/d/msg/conda/HwUazgD-hJ0/aofO0vD-MhcJ
-    while read -r x ; do
-      grep -q 'It has been auto-edited by fixincludes from' "${x}" \
-               && rm -f "${x}"
-    done < <(find "${PREFIX}"/lib/gcc/*/*/include*/ -name '*.h')
+    # See build.sh
 
     #
     # Linux Portability Issue #2: linker needs to locate crtXXX.o
@@ -88,29 +76,7 @@ else
     #
     # Linux Portability Issue #3: Compiler needs to locate system headers
     #
-
-    # Some distros use different system include paths than the ones this gcc binary was built for.
-    # We'll add these to the standard include path by providing a custom "specs file"
-
-    # First create specs file from existing defaults
-    SPECS_DIR=$(echo "${PREFIX}"/lib/gcc/*/*)
-    SPECS_FILE="${SPECS_DIR}/specs"
-    "${PREFIX}"/bin/gcc -dumpspecs > "${SPECS_FILE}"
-
-    # Now add extra include paths to the specs file, one at a time.
-    # (So far we only know of one: from Ubuntu.)
-    EXTRA_SYSTEM_INCLUDE_DIRS="/usr/include/x86_64-linux-gnu /usr/include/i686-linux-gnu /usr/include/i386-linux-gnu"
-
-    for INCDIR in ${EXTRA_SYSTEM_INCLUDE_DIRS}; do
-        # The following sed command will replace these two lines:
-        # *cpp:
-        # ... yada yada ...
-        #
-        # With these two lines:
-        # *cpp:
-        # ... yada yada ... -isystem ${INCDIR}
-        sed -i ':a;N;$!ba;s|\(*cpp:\n[^\n]*\)|\1 -isystem '${INCDIR}'|g' "${SPECS_FILE}"
-    done
+    # See build.sh
 fi
 
 ## TEST: Here we verify that gcc can build a simple "Hello world" program for both C and C++.
