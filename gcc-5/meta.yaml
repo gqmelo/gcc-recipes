@@ -21,6 +21,8 @@ build:
 
 requirements:
   build:
+      # To get a more recent assembler which supports STB_GNU_UNIQUE symbols
+    - binutils 2.28
     - gmp 6.1.*
     - mpfr 3.1.*
     - mpc 1.0.*
@@ -28,6 +30,8 @@ requirements:
     - cloog 0.18.1
     # Do not make gcc a build dependency (you will need to add it to the PATH manually)
   run:
+      # To get a more recent assembler which supports STB_GNU_UNIQUE symbols
+    - binutils >=2.28
     - gmp >=6.1.0,<7
     - mpfr >=3.1.0,<4
     - mpc 1.0.*

@@ -67,6 +67,7 @@ else
         --with-tune=generic \
         --enable-version-specific-runtime-libs \
         --disable-multilib \
+        --enable-gnu-unique-object \
         ${extra_config[@]}
 fi
 
