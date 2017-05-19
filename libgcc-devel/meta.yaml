@@ -1,0 +1,22 @@
+# This packages is intended to be used only when building and testing packages.
+# Avoid using in a regular environment or as a run requirement, as it puts libstdc++ and friends
+# on $PREFIX/lib
+
+package:
+  name: libgcc-devel
+  version: 1.0.0
+
+requirements:
+  build:
+    - libgcc >=4.8.5+1  # We only create symbolic links. The version does not really matter.
+
+  run:
+    - libgcc >=4.8.5+1  # We only create symbolic links. The version does not really matter.
+
+build:
+  number: 0
+
+about:
+  home: http://gcc.gnu.org/
+  summary: Shared libraries for the GNU Compiler Collection
+  license: GPL

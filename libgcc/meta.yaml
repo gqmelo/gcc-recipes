@@ -1,0 +1,21 @@
+{% set name = "libgcc" %}
+{% set version = "5.4.0+2" %}
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+requirements:
+  build:
+    - gcc =={{ version }}  # Must have the exact same version as the gcc being linked to
+
+build:
+  number: 1
+
+test:
+  requires:
+    - pytest
+
+about:
+  home: http://gcc.gnu.org/
+  summary: Shared libraries for the GNU Compiler Collection
+  license: GPL
